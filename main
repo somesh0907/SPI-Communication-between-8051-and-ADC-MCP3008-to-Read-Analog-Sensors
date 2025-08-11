@@ -1,0 +1,58 @@
+#include <reg51.h>
+
+#define MOSI P1_0
+#define MISO P1_1
+#define SCLK P1_2
+#define CS   P1_3
+
+unsigned int SPI_ReadADC(unsigned char channel);
+
+void Delay();
+
+void main() {
+    unsigned int adc_value;
+
+    CS = 1;
+    SCLK = 0;
+
+    while(1) {
+        adc_value = SPI_ReadADC(0);  // Read from channel 0
+
+        // Use adc_value for your application (e.g., display or control)
+        Delay();
+    }
+}
+
+unsigned int SPI_ReadADC(unsigned char channel) {
+    unsigned char i;
+    unsigned int adc_val = 0;
+
+    CS = 0;
+
+    // Start bit + single-ended mode + channel selection (3 bits)
+    unsigned char command = 0x18 | (channel & 0x07);
+    
+    // Send start bit + config bits
+    for(i=7; i>=0; i--) {
+        MOSI = (command >> i) & 0x01;
+        SCLK = 1;
+        SCLK = 0;
+    }
+
+    // Read 10 bits ADC data (MCP3008 returns 10-bit result)
+    for(i=11; i>0; i--) {
+        SCLK = 1;
+        adc_val <<= 1;
+        if(MISO) adc_val |= 0x01;
+        SCLK = 0;
+    }
+
+    CS = 1;
+    return adc_val >> 1;  // Right-align 10-bit result
+}
+
+void Delay() {
+    unsigned int i,j;
+    for(i=0; i<500; i++)
+        for(j=0; j<1275; j++);
+}
